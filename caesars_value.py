@@ -7,6 +7,7 @@ st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 st.title("📊 Caesar's Intrinsic Valuation")
 
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, MSFT):", value="AAPL")
+price = st.number_input("Current Stock Price ($):", min_value=0.0, value=100.0)
 cagr = st.slider("Expected CAGR (%):", min_value=0.0, max_value=50.0, value=10.0, step=0.5)
 
 def calculate_intrinsic_value(ticker, cagr):
@@ -98,50 +99,54 @@ def calculate_intrinsic_value(ticker, cagr):
         retained_earnings = fcf - (dividends if dividends and dividends < 0 else 0)
         roic = retained_earnings / invested_capital if invested_capital else None
 
-        s_growth_rate = None
+        sgr = None
         if roic and roic > 0:
-            s_growth_rate = roic * ((fcf + (dividends if dividends else 0)) / fcf)
+            sgr = roic * ((fcf + (dividends if dividends else 0)) / fcf)
 
         retained_rate = (fcf + (dividends if dividends else 0)) / (fcf - (dividends if dividends and dividends < 0 else 0))
 
-        return per_share, intrinsic_value_total_mos, roe, roic, fcf, discounted_fcfs, terminal_value, s_growth_rate, retained_rate, {
-            'Net Income': net_income,
-            'Capital Expenditures': capex,
-            'Depreciation & Amortization': ddna,
-            'Dividends Paid': dividends,
-            'Shareholder Equity': equity,
-            'Cash & Equivalents': cash,
-            'Long-Term Debt': lt_debt,
-            'Short-Term Debt': st_debt,
-            'Capital Leases': leases,
-            'Minority Interest': minority_interest
-        }
+        return per_share, intrinsic_value_total_mos, roe, roic, sgr, retained_rate
 
     except Exception as e:
-        return None, None, None, None, None, None, None, None, None, f"Exception occurred: {e}"
+        return None, None, None, None, None, None, f"Exception occurred: {e}"
 
 if st.button("Calculate Caesar's Value"):
-    per_share_value, total_value, roe, roic, fcf, discounted_fcfs, terminal_value, sgr, retained_rate, extra = calculate_intrinsic_value(ticker, cagr)
-    if isinstance(extra, str):
-        st.error(f"❌ {extra}")
-    elif per_share_value:
-        st.success(f"✅ Caesar's Value Estimate (with 30% margin of safety): ${per_share_value:,.2f} per share")
-        st.info(f"📈 Total Caesar's Value (with MoS): ${total_value:,.2f}")
-        st.write("### Calculation Details")
-        st.write(f"- Free Cash Flow (Owner Earnings): ${fcf:,.2f}")
-        st.write(f"- Discounted FCFs (10 yrs): {[f'${v:,.2f}' for v in discounted_fcfs]}")
-        st.write(f"- Terminal Value (undiscounted): ${terminal_value:,.2f}")
-        if roe is not None:
-            st.metric(label="📊 Return on Equity (ROE)", value=f"{roe:.2%}")
-        if roic is not None:
-            st.metric(label="🏧 Return on Invested Capital (ROIC)", value=f"{roic:.2%}")
-        if sgr is not None:
-            st.metric(label="🌎 Sustainable Growth Rate", value=f"{sgr:.2%}")
-        if retained_rate is not None:
-            st.metric(label="💼 Retained Earnings Rate", value=f"{retained_rate:.2%}")
+    result = calculate_intrinsic_value(ticker, cagr)
 
-        st.write("### Components Used for FCF Calculation")
-        for k, v in extra.items():
-            st.write(f"- {k}: ${v:,.2f}" if v is not None else f"- {k}: Not Found")
+    if isinstance(result[-1], str):
+        st.error(f"❌ {result[-1]}")
     else:
-        st.warning("⚠️ Unable to calculate value.")
+        per_share_value, total_value, roe, roic, sgr, retained_rate = result
+
+        st.subheader("📊 Valuation Summary")
+        st.table({
+            "Metric": [
+                "Caesar's Value (per share)",
+                "Total Caesar's Value",
+                "Return on Equity (ROE)",
+                "Return on Invested Capital (ROIC)",
+                "Sustainable Growth Rate (SGR)",
+                "Retained Earnings Rate"
+            ],
+            "Value": [
+                f"${per_share_value:,.2f}",
+                f"${total_value:,.2f}",
+                f"{roe:.2%}" if roe is not None else "N/A",
+                f"{roic:.2%}" if roic is not None else "N/A",
+                f"{sgr:.2%}" if sgr is not None else "N/A",
+                f"{retained_rate:.2%}" if retained_rate is not None else "N/A"
+            ]
+        })
+
+        if per_share_value and price:
+            if price > per_share_value * 1.1:
+                verdict = "🚨 Overvalued"
+            elif per_share_value * 0.9 <= price <= per_share_value * 1.1:
+                verdict = "✅ Fairly Valued"
+            else:
+                verdict = "💎 Undervalued"
+            st.subheader(f"Market Verdict: {verdict}")
+
+        st.markdown("---")
+        st.markdown("### 🧠 Disclaimer")
+        st.markdown("This tool represents **Caesar's personal valuation opinion** based on publicly available data and does **not constitute financial advice**. Always do your own due diligence.")
