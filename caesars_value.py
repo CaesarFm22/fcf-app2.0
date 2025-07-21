@@ -32,7 +32,7 @@ st.markdown("""
 st.markdown("""
     <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
         <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
-            <img src="https://github.com/CaesarFm22/fcf-app2.0/blob/main/ChatGPT%20Image%20Jul%2010,%202025,%2006_34_37%20PM.png?raw=true" width="100">
+            <img src="https://github.com/CaesarFm22/logo/blob/main/ChatGPT%20Image%20Jul%2010,%202025,%2006_34_37%20PM.png?raw=true" width="100">
         </a>
         <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
             <img src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" width="60">
