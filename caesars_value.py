@@ -26,7 +26,7 @@ def colorize(val, metric, thresholds, caesar_value, dividends_per_share, treasur
         return ""
     green, red = "background-color: #d4edda", "background-color: #f8d7da"
     if metric == "Caesar Value":
-        return green if val > price else red
+        return green if val > price else red if price and price > val else ""
     elif metric == "Price":
         return green if val < caesar_value else red
     elif metric == "ROE":
