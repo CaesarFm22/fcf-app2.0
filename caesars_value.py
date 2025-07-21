@@ -121,9 +121,23 @@ if st.button("Calculate Caesar's Value"):
         per_share_value, total_value, roe, roic, sgr, retained_rate, price, _ = result
 
         st.subheader("📊 Valuation Summary")
+        def highlight(val, metric):
+            if metric == "Caesar's Value (per share)" or metric == "Total Caesar's Value" or metric == "Stock Price":
+                return 'background-color: lightgreen' if per_share_value > price else 'background-color: lightcoral'
+            elif metric == "Return on Equity (ROE)":
+                return 'background-color: lightgreen' if roe and roe > 0.18 else 'background-color: lightcoral'
+            elif metric == "Return on Invested Capital (ROIC)":
+                return 'background-color: lightgreen' if roic and roic > 0.18 else 'background-color: lightcoral'
+            elif metric == "Sustainable Growth Rate (SGR)":
+                return 'background-color: lightgreen' if sgr and sgr > 0.18 else 'background-color: lightcoral'
+            elif metric == "Retained Earnings Rate":
+                return 'background-color: lightgreen' if retained_rate and retained_rate > 0.70 else 'background-color: lightcoral'
+            return ''
+
         df = pd.DataFrame({
             "Metric": [
                 "Caesar's Value (per share)",
+                "Stock Price",
                 "Total Caesar's Value",
                 "Return on Equity (ROE)",
                 "Return on Invested Capital (ROIC)",
@@ -132,6 +146,7 @@ if st.button("Calculate Caesar's Value"):
             ],
             "Value": [
                 f"${per_share_value:,.2f}",
+                f"${price:,.2f}" if price else "N/A",
                 f"${total_value:,.2f}",
                 f"{roe:.2%}" if roe is not None else "N/A",
                 f"{roic:.2%}" if roic is not None else "N/A",
@@ -140,10 +155,13 @@ if st.button("Calculate Caesar's Value"):
             ]
         })
 
-        st.dataframe(df.style.set_table_styles([
-            {'selector': 'th', 'props': [('background-color', '#003366'), ('color', 'white'), ('font-size', '14px')]},
-            {'selector': 'td', 'props': [('background-color', '#f0f6ff'), ('color', '#003366'), ('font-size', '13px')]}
-        ]).highlight_max(color='lightgreen', axis=0))
+        st.dataframe(
+            df.style.apply(lambda row: [highlight(row['Value'], row['Metric']) for _ in row], axis=1)
+                     .set_table_styles([
+                         {'selector': 'th', 'props': [('background-color', '#D6EAF8'), ('color', 'black'), ('font-size', '14px')]},
+                         {'selector': 'td', 'props': [('font-size', '13px')]}
+                     ])
+        )
 
         if per_share_value and price:
             if price > per_share_value * 1.1:
