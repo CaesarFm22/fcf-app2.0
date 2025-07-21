@@ -30,28 +30,33 @@ def calculate_intrinsic_value(ticker, cagr):
                 ocf = float(cashflow.loc[row].dropna().values[0])
             elif 'capital expend' in row_str and capex is None:
                 capex = float(cashflow.loc[row].dropna().values[0])
-            elif 'depreciation' in row_str and ddna is None:
+            elif ('depreciation' in row_str or 'amortization' in row_str) and ddna is None:
                 ddna = float(cashflow.loc[row].dropna().values[0])
             elif 'dividends paid' in row_str and dividends is None:
                 dividends = float(cashflow.loc[row].dropna().values[0])
 
         for row in balance_sheet.index:
             row_str = str(row).lower()
-            if 'total stockholder equity' in row_str and equity is None:
+            if 'stockholder' in row_str and 'equity' in row_str and equity is None:
                 equity = float(balance_sheet.loc[row].dropna().values[0])
             elif 'long term debt' in row_str and lt_debt is None:
                 lt_debt = float(balance_sheet.loc[row].dropna().values[0])
             elif 'short long term debt' in row_str and st_debt is None:
                 st_debt = float(balance_sheet.loc[row].dropna().values[0])
-            elif 'cash and cash equivalents' in row_str and cash is None:
+            elif 'cash and cash' in row_str and cash is None:
                 cash = float(balance_sheet.loc[row].dropna().values[0])
-            elif 'noncurrent capital lease' in row_str and leases is None:
+            elif 'capital lease' in row_str and leases is None:
                 leases = float(balance_sheet.loc[row].dropna().values[0])
             elif 'minority interest' in row_str and minority_interest is None:
                 minority_interest = float(balance_sheet.loc[row].dropna().values[0])
 
         if ocf is None or capex is None or ddna is None or equity is None:
-            return None, None, None, None, "Missing required financial components."
+            missing = []
+            if ocf is None: missing.append("Operating Cash Flow")
+            if capex is None: missing.append("Capital Expenditures")
+            if ddna is None: missing.append("Depreciation & Amortization")
+            if equity is None: missing.append("Shareholder Equity")
+            return None, None, None, None, f"Missing required financial components: {', '.join(missing)}"
 
         capex = -abs(capex)
         ddna = -abs(ddna)
@@ -88,7 +93,7 @@ def calculate_intrinsic_value(ticker, cagr):
         roe = fcf / equity if equity else None
 
         # ROIC
-        invested_capital = equity + (lt_debt or 0) + (st_debt or 0) + (leases or 0) + (minority_interest or 0) - (cash or 0)
+        invested_capital = (equity or 0) + (lt_debt or 0) + (st_debt or 0) + (leases or 0) + (minority_interest or 0) - (cash or 0)
         retained_earnings = fcf - (dividends if dividends and dividends < 0 else 0)
         roic = retained_earnings / invested_capital if invested_capital else None
 
