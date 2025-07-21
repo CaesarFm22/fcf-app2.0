@@ -35,10 +35,11 @@ def calculate_intrinsic_value(ticker, cagr):
         if ocf is None or capex is None or ddna is None:
             return None, "Missing required cashflow components."
 
-        # Apply the rule: use max(capex, ddna) (both are negative values)
-        adjusted_capex = capex if abs(capex) > abs(ddna) else ddna
-
-        fcf = ocf - adjusted_capex
+        # Ensure CapEx and DD&A are treated as negative outflows
+        capex = float(capex)
+        ddna = float(ddna)
+        adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
+        fcf = ocf - adjusted_cost
 
         # DCF valuation with 5-year projection and terminal value
         years = 5
@@ -53,7 +54,7 @@ def calculate_intrinsic_value(ticker, cagr):
 
         intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal
 
-        if shares_outstanding:
+        if shares_outstanding and shares_outstanding > 0:
             per_share = intrinsic_value_total / shares_outstanding
         else:
             per_share = None
