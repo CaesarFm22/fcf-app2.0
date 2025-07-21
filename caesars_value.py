@@ -19,7 +19,7 @@ def calculate_intrinsic_value(ticker, cagr):
         shares_outstanding = info.get("sharesOutstanding", None)
 
         if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty or financials is None or financials.empty:
-            return None, None, None, None, None, None, None, "Could not fetch required financial data."
+            return None, None, None, None, None, None, None, None, None, "Could not fetch required financial data."
 
         net_income = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = None
 
@@ -32,8 +32,9 @@ def calculate_intrinsic_value(ticker, cagr):
             row_str = str(row).lower()
             if 'capital expend' in row_str and capex is None:
                 capex = float(cashflow.loc[row].dropna().values[0])
-            elif ('depreciation' in row_str or 'amortization' in row_str) and ddna is None:
-                ddna = float(cashflow.loc[row].dropna().values[0])
+            elif any(term in row_str for term in ['depreciation', 'amortization', 'depletion']):
+                value = float(cashflow.loc[row].dropna().values[0])
+                ddna = (ddna or 0) + value
             elif 'dividends paid' in row_str and dividends is None:
                 dividends = float(cashflow.loc[row].dropna().values[0])
 
@@ -60,7 +61,7 @@ def calculate_intrinsic_value(ticker, cagr):
         }
         missing = [k for k, v in required.items() if v is None]
         if missing:
-            return None, None, None, None, None, None, None, f"Missing required financial components: {', '.join(missing)}"
+            return None, None, None, None, None, None, None, None, None, f"Missing required financial components: {', '.join(missing)}"
 
         capex = -abs(capex)
         ddna = -abs(ddna)
@@ -97,7 +98,13 @@ def calculate_intrinsic_value(ticker, cagr):
         retained_earnings = fcf - (dividends if dividends and dividends < 0 else 0)
         roic = retained_earnings / invested_capital if invested_capital else None
 
-        return per_share, intrinsic_value_total_mos, roe, roic, fcf, discounted_fcfs, terminal_value, {
+        s_growth_rate = None
+        if roic and roic > 0:
+            s_growth_rate = roic * ((fcf + (dividends if dividends else 0)) / fcf)
+
+        retained_rate = (fcf + (dividends if dividends else 0)) / (fcf - (dividends if dividends and dividends < 0 else 0))
+
+        return per_share, intrinsic_value_total_mos, roe, roic, fcf, discounted_fcfs, terminal_value, s_growth_rate, retained_rate, {
             'Net Income': net_income,
             'Capital Expenditures': capex,
             'Depreciation & Amortization': ddna,
@@ -111,10 +118,10 @@ def calculate_intrinsic_value(ticker, cagr):
         }
 
     except Exception as e:
-        return None, None, None, None, None, None, None, f"Exception occurred: {e}"
+        return None, None, None, None, None, None, None, None, None, f"Exception occurred: {e}"
 
 if st.button("Calculate Caesar's Value"):
-    per_share_value, total_value, roe, roic, fcf, discounted_fcfs, terminal_value, extra = calculate_intrinsic_value(ticker, cagr)
+    per_share_value, total_value, roe, roic, fcf, discounted_fcfs, terminal_value, sgr, retained_rate, extra = calculate_intrinsic_value(ticker, cagr)
     if isinstance(extra, str):
         st.error(f"❌ {extra}")
     elif per_share_value:
@@ -127,7 +134,11 @@ if st.button("Calculate Caesar's Value"):
         if roe is not None:
             st.metric(label="📊 Return on Equity (ROE)", value=f"{roe:.2%}")
         if roic is not None:
-            st.metric(label="🏗️ Return on Invested Capital (ROIC)", value=f"{roic:.2%}")
+            st.metric(label="🏧 Return on Invested Capital (ROIC)", value=f"{roic:.2%}")
+        if sgr is not None:
+            st.metric(label="🌎 Sustainable Growth Rate", value=f"{sgr:.2%}")
+        if retained_rate is not None:
+            st.metric(label="💼 Retained Earnings Rate", value=f"{retained_rate:.2%}")
 
         st.write("### Components Used for FCF Calculation")
         for k, v in extra.items():
