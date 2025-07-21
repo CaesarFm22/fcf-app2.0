@@ -13,8 +13,8 @@ st.markdown("""
         color: #ffffff;
     }
 
-    .css-1d391kg, .css-1v0mbdj, .css-1r6slb0 {
-        color: #ffffff;
+    label, .stSlider label, .stTextInput label, .css-1d391kg, .css-1v0mbdj, .css-1r6slb0, .css-10trblm, .css-hxt7ib {
+        color: #ffffff !important;
     }
 
     .stTextInput>div>div>input,
@@ -25,10 +25,6 @@ st.markdown("""
 
     .stDataFrame td {
         color: #ffffff !important;
-    }
-
-    .css-10trblm, .css-hxt7ib {
-        color: #ffffff;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -159,7 +155,7 @@ else:
     color = "#d4edda" if valuation_status == "undervalued" else "#f8d7da" if valuation_status == "overvalued" else "#fff3cd"
     status_color = "green" if valuation_status == "undervalued" else "red" if valuation_status == "overvalued" else "#a87b00"
 
-    st.markdown(f"### <span style='background-color:{color}; padding:0.2em 0.4em;'>According to Caesar, this stock is <strong style='color:{status_color}'>{valuation_status}</strong>.</span>", unsafe_allow_html=True)
+    st.markdown(f"### <span style='background-color:{color}; padding:0.2em 0.4em; color:#000;'>According to Caesar, this stock is <strong style='color:{status_color}'>{valuation_status}</strong>.</span>", unsafe_allow_html=True)
 
     st.markdown("""
     ---
