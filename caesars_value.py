@@ -26,22 +26,24 @@ def calculate_intrinsic_value(ticker, cagr):
         for row in cashflow.index:
             row_str = str(row).lower()
             if 'operating cash flow' in row_str and ocf is None:
-                ocf = cashflow.loc[row].dropna().values[0]
+                ocf = float(cashflow.loc[row].dropna().values[0])
             elif 'capital expend' in row_str and capex is None:
-                capex = cashflow.loc[row].dropna().values[0]
+                capex = float(cashflow.loc[row].dropna().values[0])
             elif 'depreciation' in row_str and ddna is None:
-                ddna = cashflow.loc[row].dropna().values[0]
+                ddna = float(cashflow.loc[row].dropna().values[0])
 
         if ocf is None or capex is None or ddna is None:
             return None, "Missing required cashflow components."
 
         # Ensure CapEx and DD&A are treated as negative outflows
-        capex = float(capex)
-        ddna = float(ddna)
+        capex = -abs(capex)
+        ddna = -abs(ddna)
+
+        # Use the higher absolute value between CapEx and DD&A
         adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
         fcf = ocf - adjusted_cost
 
-        # DCF valuation with 5-year projection and terminal value
+        # DCF valuation with 5-year projection and terminal value (as 9 * final FCF)
         years = 5
         cagr_rate = cagr / 100
         discount = 0.06  # constant 6% discount rate
@@ -49,7 +51,8 @@ def calculate_intrinsic_value(ticker, cagr):
         projected_fcfs = [fcf * ((1 + cagr_rate) ** year) for year in range(1, years + 1)]
         discounted_fcfs = [fcf_ / ((1 + discount) ** year) for year, fcf_ in enumerate(projected_fcfs, start=1)]
 
-        terminal_value = projected_fcfs[-1] * (1 + cagr_rate) / (discount - cagr_rate)
+        # Terminal value as 9x the final projected FCF
+        terminal_value = projected_fcfs[-1] * 9
         discounted_terminal = terminal_value / ((1 + discount) ** years)
 
         intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal
