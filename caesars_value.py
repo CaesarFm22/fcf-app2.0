@@ -12,7 +12,7 @@ stock = yf.Ticker(ticker)
 price = stock.info.get("currentPrice", None)
 cagr = st.slider("Expected CAGR (%):", min_value=0.0, max_value=50.0, value=10.0, step=0.5)
 
-def colorize(val, metric, thresholds, caesar_value):
+def colorize(val, metric, thresholds, caesar_value, dividends_per_share, treasury_stock):
     if val is None:
         return ""
     green, red = "background-color: #d4edda", "background-color: #f8d7da"
@@ -31,7 +31,7 @@ def colorize(val, metric, thresholds, caesar_value):
     elif metric == "Preferred Stock":
         return red if val and val > 0 else green
     elif metric == "Treasury Stock":
-        return green if val and val > 0 or dividends_per_share and dividends_per_share > 0 else red
+        return green if val and val > 0 or (dividends_per_share and dividends_per_share > 0) else red
     elif metric == "Debt to Equity":
         return green if val < thresholds else red
     elif metric == "Cash to Debt":
@@ -39,7 +39,7 @@ def colorize(val, metric, thresholds, caesar_value):
     elif metric == "Market Cap":
         return green if val < caesar_value * 0.9 else red if val > caesar_value * 1.1 else "background-color: #fff3cd"
     elif metric == "Dividends per Share":
-        return green if val > 0 or (treasury and treasury > 0) else red
+        return green if val > 0 or (treasury_stock and treasury_stock > 0) else red
     return ""
 
 def calculate_intrinsic_value(ticker, cagr):
@@ -133,6 +133,8 @@ else:
     df.index.name = "Metric"
 
     caesar_value = results[0]
+    dividends_per_share = results[12]
+    treasury_stock = results[8]
 
     def highlight(val, metric):
         thresholds = {
@@ -143,7 +145,7 @@ else:
             "Debt to Equity": 0.8,
             "Cash to Debt": 0.9,
         }
-        return colorize(val, metric, thresholds.get(metric, 0), caesar_value)
+        return colorize(val, metric, thresholds.get(metric, 0), caesar_value, dividends_per_share, treasury_stock)
 
     styled = df.style.set_table_styles([
         {"selector": "th", "props": [("background-color", "#dbefff"), ("font-weight", "bold")]},
