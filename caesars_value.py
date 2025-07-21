@@ -157,10 +157,10 @@ else:
         return colorize(val, metric, thresholds.get(metric, 0), caesar_value, dividends_per_share, treasury_stock)
 
     df["Formatted"] = [format_value(val, idx) for val, idx in zip(df["Value"], df.index)]
-    styled = df[["Formatted"]].style.set_table_styles([
+    styled = df.style.set_table_styles([
         {"selector": "th", "props": [("background-color", "#dbefff"), ("font-weight", "bold")]},
-        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}])\
-        .apply(lambda col: [highlight(val, idx) for val, idx in zip(df.index, df["Value"])], axis=0)
+        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}
+    ]).apply(lambda col: [highlight(val, idx) for val, idx in zip(df["Value"], df.index)], axis=0).format({"Value": format_value})
 
     st.table(styled)
 
