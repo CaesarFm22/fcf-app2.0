@@ -18,16 +18,19 @@ def calculate_intrinsic_value(ticker, cagr):
         info = stock.info
         shares_outstanding = info.get("sharesOutstanding", None)
 
-        if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty:
+        if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty or financials is None or financials.empty:
             return None, None, None, None, None, None, None, "Could not fetch required financial data."
 
-        ocf = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = None
+        net_income = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = None
+
+        for row in financials.index:
+            row_str = str(row).lower()
+            if 'net income' in row_str and net_income is None:
+                net_income = float(financials.loc[row].dropna().values[0])
 
         for row in cashflow.index:
             row_str = str(row).lower()
-            if 'operating cash flow' in row_str and ocf is None:
-                ocf = float(cashflow.loc[row].dropna().values[0])
-            elif 'capital expend' in row_str and capex is None:
+            if 'capital expend' in row_str and capex is None:
                 capex = float(cashflow.loc[row].dropna().values[0])
             elif ('depreciation' in row_str or 'amortization' in row_str) and ddna is None:
                 ddna = float(cashflow.loc[row].dropna().values[0])
@@ -50,7 +53,7 @@ def calculate_intrinsic_value(ticker, cagr):
                 minority_interest = float(balance_sheet.loc[row].dropna().values[0])
 
         required = {
-            'Operating Cash Flow': ocf,
+            'Net Income': net_income,
             'Capital Expenditures': capex,
             'Depreciation & Amortization': ddna,
             'Shareholder Equity': equity
@@ -62,7 +65,7 @@ def calculate_intrinsic_value(ticker, cagr):
         capex = -abs(capex)
         ddna = -abs(ddna)
         adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
-        fcf = ocf - adjusted_cost
+        fcf = net_income - adjusted_cost
 
         discount_rate = 0.06
         cagr_rate = cagr / 100
@@ -95,7 +98,7 @@ def calculate_intrinsic_value(ticker, cagr):
         roic = retained_earnings / invested_capital if invested_capital else None
 
         return per_share, intrinsic_value_total_mos, roe, roic, fcf, discounted_fcfs, terminal_value, {
-            'Operating Cash Flow': ocf,
+            'Net Income': net_income,
             'Capital Expenditures': capex,
             'Depreciation & Amortization': ddna,
             'Dividends Paid': dividends,
