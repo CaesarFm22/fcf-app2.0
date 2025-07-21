@@ -1,67 +1,73 @@
 import streamlit as st
 import yfinance as yf
-import pandas as pd
+import numpy as np
 
-# Function to calculate intrinsic value using Free Cash Flow to Firm (FCFF) method
-def calculate_intrinsic_value(ticker: str, cagr: float):
+st.set_page_config(page_title="Caesars Valuation", page_icon="💰")
+
+st.title("📊 Caesars Intrinsic Valuation")
+
+ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, MSFT):", value="AAPL")
+cagr = st.slider("Expected CAGR (%):", min_value=0.0, max_value=20.0, value=10.0, step=0.5)
+discount_rate = st.slider("Discount Rate (%):", min_value=0.0, max_value=15.0, value=10.0, step=0.5)
+
+def calculate_intrinsic_value(ticker, cagr, discount_rate):
     try:
-        ticker = ticker.upper()
         stock = yf.Ticker(ticker)
         cashflow = stock.cashflow
+        shares_outstanding = stock.info.get("sharesOutstanding", None)
 
-        if cashflow.empty:
-            st.error("Cashflow data is empty.")
-            return None
+        if cashflow is None or cashflow.empty:
+            return None, "Could not fetch cashflow data."
 
-        # Attempt to find appropriate row labels for OCF and CapEx
-        ocf_row = next((label for label in cashflow.index if 'Operating Cash Flow' in label or 'Total Cash From Operating Activities' in label), None)
-        capex_row = next((label for label in cashflow.index if 'Capital Expenditure' in label), None)
+        # Extract the relevant fields
+        ocf = None
+        capex = None
+        ddna = None
 
-        if not ocf_row or not capex_row:
-            st.error("Could not find required fields in cashflow.")
-            return None
+        for row in cashflow.index:
+            row_str = str(row).lower()
+            if 'operating cash flow' in row_str and ocf is None:
+                ocf = cashflow.loc[row].dropna().values[0]
+            elif 'capital expend' in row_str and capex is None:
+                capex = cashflow.loc[row].dropna().values[0]
+            elif 'depreciation' in row_str and ddna is None:
+                ddna = cashflow.loc[row].dropna().values[0]
 
-        ocf = cashflow.loc[ocf_row]
-        capex = cashflow.loc[capex_row]
+        if ocf is None or capex is None or ddna is None:
+            return None, "Missing required cashflow components."
 
-        fcf = ocf - capex
-        fcf = fcf[fcf.notnull()].astype(float)
+        # Apply the rule: use max(capex, ddna) (both are negative values)
+        adjusted_capex = capex if abs(capex) > abs(ddna) else ddna
 
-        if fcf.empty:
-            st.error("Free Cash Flow data is not available.")
-            return None
+        fcf = ocf - adjusted_capex
 
-        avg_fcf = fcf.mean()
-
-        discount_rate = 0.10
+        # DCF valuation with 5-year projection and terminal value
         years = 5
+        cagr_rate = cagr / 100
+        discount = discount_rate / 100
 
-        # Project future FCFs and calculate terminal value
-        projected_fcfs = [avg_fcf * ((1 + cagr/100) ** i) for i in range(1, years + 1)]
-        terminal_value = projected_fcfs[-1] * (1 + cagr/100) / (discount_rate - cagr/100)
+        projected_fcfs = [fcf * ((1 + cagr_rate) ** year) for year in range(1, years + 1)]
+        discounted_fcfs = [fcf_ / ((1 + discount) ** year) for year, fcf_ in enumerate(projected_fcfs, start=1)]
 
-        # Discount FCFs and terminal value to present value
-        discounted_fcfs = [fcf / ((1 + discount_rate) ** i) for i, fcf in enumerate(projected_fcfs, start=1)]
-        discounted_terminal = terminal_value / ((1 + discount_rate) ** years)
+        terminal_value = projected_fcfs[-1] * (1 + cagr_rate) / (discount - cagr_rate)
+        discounted_terminal = terminal_value / ((1 + discount) ** years)
 
-        intrinsic_value = sum(discounted_fcfs) + discounted_terminal
-        return intrinsic_value
+        intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal
 
+        if shares_outstanding:
+            per_share = intrinsic_value_total / shares_outstanding
+        else:
+            per_share = None
+
+        return per_share, None
     except Exception as e:
-        st.error(f"Exception occurred: {e}")
-        return None
+        return None, f"Exception occurred: {e}"
 
-# Streamlit frontend
-st.title("📊 Free Cash Flow Valuation Tool")
-st.write("Estimate the intrinsic value of a stock using its Free Cash Flow (FCF).")
-
-ticker = st.text_input("Enter Stock Ticker (e.g., AAPL):")
-cagr = st.slider("Expected CAGR (%):", min_value=1.0, max_value=20.0, value=10.0, step=0.5)
-
-if st.button("Calculate Valuation"):
-    if not ticker:
-        st.warning("Please enter a stock ticker.")
+if st.button("Calculate Caesars Value"):
+    value, error = calculate_intrinsic_value(ticker, cagr, discount_rate)
+    if error:
+        st.error(f"❌ {error}")
+    elif value:
+        st.success(f"✅ Caesars Value Estimate: ${value:,.2f} per share")
     else:
-        valuation = calculate_intrinsic_value(ticker, cagr)
-        if valuation:
-            st.success(f"✅ Intrinsic Value Estimate: ${valuation:,.2f}")
+        st.warning("⚠️ Unable to calculate value.")
