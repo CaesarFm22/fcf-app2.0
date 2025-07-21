@@ -17,7 +17,7 @@ def calculate_intrinsic_value(ticker, cagr):
         shares_outstanding = stock.info.get("sharesOutstanding", None)
 
         if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty:
-            return None, "Could not fetch required financial data."
+            return None, None, "Could not fetch required financial data."
 
         # Extract the relevant fields
         ocf = None
@@ -34,7 +34,7 @@ def calculate_intrinsic_value(ticker, cagr):
                 ddna = float(cashflow.loc[row].dropna().values[0])
 
         if ocf is None or capex is None or ddna is None:
-            return None, "Missing required cashflow components."
+            return None, None, "Missing required cashflow components."
 
         capex = -abs(capex)
         ddna = -abs(ddna)
@@ -83,21 +83,24 @@ def calculate_intrinsic_value(ticker, cagr):
             debt_adjustment += abs(long_term_debt)
 
         intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal + cash + debt_adjustment
+        margin_of_safety = 0.30
+        intrinsic_value_total_mos = intrinsic_value_total * (1 - margin_of_safety)
 
         if shares_outstanding and shares_outstanding > 0:
-            per_share = intrinsic_value_total / shares_outstanding
+            per_share = intrinsic_value_total_mos / shares_outstanding
         else:
             per_share = None
 
-        return per_share, None
+        return per_share, intrinsic_value_total_mos, None
     except Exception as e:
-        return None, f"Exception occurred: {e}"
+        return None, None, f"Exception occurred: {e}"
 
 if st.button("Calculate Caesar's Value"):
-    value, error = calculate_intrinsic_value(ticker, cagr)
+    per_share_value, total_value, error = calculate_intrinsic_value(ticker, cagr)
     if error:
         st.error(f"❌ {error}")
-    elif value:
-        st.success(f"✅ Caesar's Value Estimate: ${value:,.2f} per share")
+    elif per_share_value:
+        st.success(f"✅ Caesar's Value Estimate (with 30% margin of safety): ${per_share_value:,.2f} per share")
+        st.info(f"📈 Total Intrinsic Value (with MoS): ${total_value:,.2f}")
     else:
         st.warning("⚠️ Unable to calculate value.")
