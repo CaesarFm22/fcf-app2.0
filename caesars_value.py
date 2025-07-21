@@ -122,7 +122,7 @@ if st.button("Calculate Caesar's Value"):
 
         st.subheader("📊 Valuation Summary")
         def highlight(val, metric):
-            if metric == "Caesar's Value (per share)" or metric == "Total Caesar's Value" or metric == "Stock Price":
+            if metric in ["Caesar's Value (per share)", "Total Caesar's Value", "Stock Price"]:
                 return 'background-color: lightgreen' if per_share_value > price else 'background-color: lightcoral'
             elif metric == "Return on Equity (ROE)":
                 return 'background-color: lightgreen' if roe and roe > 0.18 else 'background-color: lightcoral'
@@ -156,9 +156,9 @@ if st.button("Calculate Caesar's Value"):
         })
 
         st.dataframe(
-            df.style.apply(lambda row: [highlight(row['Value'], row['Metric']) for _ in row], axis=1)
+            df.style.apply(lambda row: ["background-color: #EAF2F8"] + [highlight(row['Value'], row['Metric'])], axis=1)
                      .set_table_styles([
-                         {'selector': 'th', 'props': [('background-color', '#D6EAF8'), ('color', 'black'), ('font-size', '14px')]},
+                         {'selector': 'th', 'props': [('background-color', '#AED6F1'), ('color', 'black'), ('font-size', '14px')]},
                          {'selector': 'td', 'props': [('font-size', '13px')]}
                      ])
         )
