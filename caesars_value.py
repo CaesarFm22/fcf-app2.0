@@ -22,36 +22,6 @@ def format_value(val, metric):
         return f"{val * 100:.2f}%"
     return val
 
-def colorize(val, metric, thresholds, caesar_value, dividends_per_share, treasury_stock):
-    if val is None:
-        return ""
-    green, red, yellow = "background-color: #d4edda", "background-color: #f8d7da", "background-color: #fff3cd"
-    if metric == "Caesar Value":
-        return green if val > price else red if price and price > val else ""
-    elif metric == "Price":
-        return green if val < caesar_value else red
-    elif metric == "ROE":
-        return green if val > thresholds else red
-    elif metric == "ROIC":
-        return green if val > thresholds else red
-    elif metric == "SGR":
-        return green if val > thresholds else red
-    elif metric == "Retained Earnings %":
-        return green if val > thresholds else red
-    elif metric == "Preferred Stock":
-        return red if val and val > 0 else green
-    elif metric == "Treasury Stock":
-        return green if val and val > 0 or (dividends_per_share and dividends_per_share > 0) else red
-    elif metric == "Debt to Equity":
-        return green if val < thresholds else red
-    elif metric == "Cash to Debt":
-        return green if val > thresholds else red
-    elif metric == "Market Cap":
-        return green if val < caesar_value * 0.9 else red if val > caesar_value * 1.1 else yellow
-    elif metric == "Dividends per Share":
-        return green if val > 0 or (treasury_stock and treasury_stock > 0) else red
-    return ""
-
 def calculate_intrinsic_value(ticker, cagr):
     try:
         stock = yf.Ticker(ticker)
@@ -142,26 +112,11 @@ else:
     df.columns = ["Value"]
     df.index.name = "Metric"
 
-    caesar_value = results[0]
-    dividends_per_share = results[12]
-    treasury_stock = results[8]
-
-    def highlight(val, metric):
-        thresholds = {
-            "ROE": 0.18,
-            "ROIC": 0.18,
-            "SGR": 0.18,
-            "Retained Earnings %": 0.7,
-            "Debt to Equity": 0.8,
-            "Cash to Debt": 0.9,
-        }
-        return colorize(val, metric, thresholds.get(metric, 0), caesar_value, dividends_per_share, treasury_stock)
-
     df["Formatted"] = [format_value(val, idx) for val, idx in zip(df["Value"], df.index)]
     styled = df[["Formatted"]].style.set_table_styles([
         {"selector": "th", "props": [("background-color", "#dbefff"), ("font-weight", "bold")]},
         {"selector": "thead th", "props": [("background-color", "#a8d0ff")]} 
-    ]).apply(lambda col: [highlight(val, idx) for val, idx in zip(df["Value"], df.index)], axis=0)
+    ])
 
     st.dataframe(styled, use_container_width=True)
 
