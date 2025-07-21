@@ -94,15 +94,26 @@ def calculate_intrinsic_value(ticker, cagr):
         retained_earnings = fcf - (dividends if dividends and dividends < 0 else 0)
         roic = retained_earnings / invested_capital if invested_capital else None
 
-        return per_share, intrinsic_value_total_mos, roe, roic, fcf, discounted_fcfs, terminal_value, None
+        return per_share, intrinsic_value_total_mos, roe, roic, fcf, discounted_fcfs, terminal_value, {
+            'Operating Cash Flow': ocf,
+            'Capital Expenditures': capex,
+            'Depreciation & Amortization': ddna,
+            'Dividends Paid': dividends,
+            'Shareholder Equity': equity,
+            'Cash & Equivalents': cash,
+            'Long-Term Debt': lt_debt,
+            'Short-Term Debt': st_debt,
+            'Capital Leases': leases,
+            'Minority Interest': minority_interest
+        }
 
     except Exception as e:
         return None, None, None, None, None, None, None, f"Exception occurred: {e}"
 
 if st.button("Calculate Caesar's Value"):
-    per_share_value, total_value, roe, roic, fcf, discounted_fcfs, terminal_value, error = calculate_intrinsic_value(ticker, cagr)
-    if error:
-        st.error(f"❌ {error}")
+    per_share_value, total_value, roe, roic, fcf, discounted_fcfs, terminal_value, extra = calculate_intrinsic_value(ticker, cagr)
+    if isinstance(extra, str):
+        st.error(f"❌ {extra}")
     elif per_share_value:
         st.success(f"✅ Caesar's Value Estimate (with 30% margin of safety): ${per_share_value:,.2f} per share")
         st.info(f"📈 Total Caesar's Value (with MoS): ${total_value:,.2f}")
@@ -114,5 +125,9 @@ if st.button("Calculate Caesar's Value"):
             st.metric(label="📊 Return on Equity (ROE)", value=f"{roe:.2%}")
         if roic is not None:
             st.metric(label="🏗️ Return on Invested Capital (ROIC)", value=f"{roic:.2%}")
+
+        st.write("### Components Used for FCF Calculation")
+        for k, v in extra.items():
+            st.write(f"- {k}: ${v:,.2f}" if v is not None else f"- {k}: Not Found")
     else:
         st.warning("⚠️ Unable to calculate value.")
