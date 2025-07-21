@@ -101,6 +101,6 @@ if st.button("Calculate Caesar's Value"):
         st.error(f"❌ {error}")
     elif per_share_value:
         st.success(f"✅ Caesar's Value Estimate (with 30% margin of safety): ${per_share_value:,.2f} per share")
-        st.info(f"📈 Total Intrinsic Value (with MoS): ${total_value:,.2f}")
+        st.info(f"📈 Total Caesar's Value (with MoS): ${total_value:,.2f}")
     else:
         st.warning("⚠️ Unable to calculate value.")
