@@ -6,6 +6,7 @@ import pandas as pd
 st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 
 st.title("📊 Caesar's Intrinsic Valuation")
+st.image("ChatGPT Image Jul 10, 2025, 06_34_37 PM.png", width=80)
 
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, MSFT):", value="AAPL")
 stock = yf.Ticker(ticker)
@@ -24,7 +25,7 @@ def format_value(val, metric):
 def colorize(val, metric, thresholds, caesar_value, dividends_per_share, treasury_stock):
     if val is None:
         return ""
-    green, red = "background-color: #d4edda", "background-color: #f8d7da"
+    green, red, yellow = "background-color: #d4edda", "background-color: #f8d7da", "background-color: #fff3cd"
     if metric == "Caesar Value":
         return green if val > price else red if price and price > val else ""
     elif metric == "Price":
@@ -46,7 +47,7 @@ def colorize(val, metric, thresholds, caesar_value, dividends_per_share, treasur
     elif metric == "Cash to Debt":
         return green if val > thresholds else red
     elif metric == "Market Cap":
-        return green if val < caesar_value * 0.9 else red if val > caesar_value * 1.1 else "background-color: #fff3cd"
+        return green if val < caesar_value * 0.9 else red if val > caesar_value * 1.1 else yellow
     elif metric == "Dividends per Share":
         return green if val > 0 or (treasury_stock and treasury_stock > 0) else red
     return ""
@@ -167,7 +168,9 @@ else:
     current_price = results[6]
     caesar_value_per_share = results[1]
     valuation_status = "undervalued" if current_price < caesar_value_per_share * 0.9 else "overvalued" if current_price > caesar_value_per_share * 1.1 else "fairly valued"
-    st.markdown(f"### 🏷️ According to Caesar, this stock is **{valuation_status}**.")
+    color = "#d4edda" if valuation_status == "undervalued" else "#f8d7da" if valuation_status == "overvalued" else "#fff3cd"
+
+    st.markdown(f"### <span style='background-color:{color}; padding:0.2em 0.4em;'>According to Caesar, this stock is **{valuation_status}**.</span>", unsafe_allow_html=True)
 
     st.markdown("""
     ---
