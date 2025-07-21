@@ -12,6 +12,15 @@ stock = yf.Ticker(ticker)
 price = stock.info.get("currentPrice", None)
 cagr = st.slider("Expected CAGR (%):", min_value=0.0, max_value=50.0, value=10.0, step=0.5)
 
+def format_value(val, metric):
+    if val is None:
+        return ""
+    if metric in ["Caesar Value", "Caesar Value per Share", "Price", "Preferred Stock", "Treasury Stock", "Market Cap", "Dividends per Share"]:
+        return f"${val:,.2f}"
+    elif metric in ["ROE", "ROIC", "SGR", "Retained Earnings %", "Debt to Equity", "Cash to Debt"]:
+        return f"{val * 100:.2f}%"
+    return val
+
 def colorize(val, metric, thresholds, caesar_value, dividends_per_share, treasury_stock):
     if val is None:
         return ""
@@ -147,10 +156,11 @@ else:
         }
         return colorize(val, metric, thresholds.get(metric, 0), caesar_value, dividends_per_share, treasury_stock)
 
-    styled = df.style.set_table_styles([
+    df["Formatted"] = [format_value(val, idx) for val, idx in zip(df["Value"], df.index)]
+    styled = df[["Formatted"]].style.set_table_styles([
         {"selector": "th", "props": [("background-color", "#dbefff"), ("font-weight", "bold")]},
-        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}
-    ]).apply(lambda col: [highlight(val, idx) for idx, val in zip(df.index, col)], axis=0)
+        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}])\
+        .apply(lambda col: [highlight(val, idx) for val, idx in zip(df.index, df["Value"])], axis=0)
 
     st.table(styled)
 
