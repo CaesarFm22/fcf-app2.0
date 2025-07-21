@@ -5,19 +5,16 @@ import pandas as pd
 
 st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.markdown("""
+st.markdown("""
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
         <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
-            <img src="https://github.com/CaesarFm22/fcf-app2.0/blob/main/ChatGPT%20Image%20Jul%2010,%202025,%2006_34_37%20PM.png?raw=true" width="80">
+            <img src="https://github.com/CaesarFm22/fcf-app2.0/blob/main/ChatGPT%20Image%20Jul%2010,%202025,%2006_34_37%20PM.png?raw=true" width="100">
         </a>
-    """, unsafe_allow_html=True)
-with col2:
-    st.markdown("""
         <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" width="100">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" width="60">
         </a>
-    """, unsafe_allow_html=True)
+    </div>
+""", unsafe_allow_html=True)
 
 st.title("Caesar's Intrinsic Valuation")
 
@@ -126,12 +123,7 @@ else:
     df.index.name = "Metric"
 
     df["Formatted"] = [format_value(val, idx) for val, idx in zip(df["Value"], df.index)]
-    styled = df[["Formatted"]].style.set_table_styles([
-        {"selector": "th", "props": [("background-color", "#dbefff"), ("font-weight", "bold")]},
-        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}
-    ])
-
-    st.dataframe(styled, use_container_width=True)
+    st.dataframe(df[["Formatted"]], use_container_width=True)
 
     current_price = results[6]
     caesar_value_per_share = results[1]
