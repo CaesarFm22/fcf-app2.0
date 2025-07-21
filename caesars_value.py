@@ -1,6 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import numpy as np
+import pandas as pd
 
 st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 
@@ -120,7 +121,7 @@ if st.button("Calculate Caesar's Value"):
         per_share_value, total_value, roe, roic, sgr, retained_rate, price, _ = result
 
         st.subheader("📊 Valuation Summary")
-        st.table({
+        df = pd.DataFrame({
             "Metric": [
                 "Caesar's Value (per share)",
                 "Total Caesar's Value",
@@ -139,6 +140,11 @@ if st.button("Calculate Caesar's Value"):
             ]
         })
 
+        st.dataframe(df.style.set_table_styles([
+            {'selector': 'th', 'props': [('background-color', '#003366'), ('color', 'white'), ('font-size', '14px')]},
+            {'selector': 'td', 'props': [('background-color', '#f0f6ff'), ('color', '#003366'), ('font-size', '13px')]}
+        ]).highlight_max(color='lightgreen', axis=0))
+
         if per_share_value and price:
             if price > per_share_value * 1.1:
                 verdict = "🚨 Overvalued"
@@ -150,4 +156,4 @@ if st.button("Calculate Caesar's Value"):
 
         st.markdown("---")
         st.markdown("### 🧠 Disclaimer")
-        st.markdown("This tool represents **Caesar's personal valuation opinion** based on publicly available data and does **not constitute financial advice**. Always do your own due diligence.")
+        st.markdown("This tool represents **Caesar's personal valuation opinion** based on publicly available data and does **not constitute financial advice**. Caesar believes spreadsheets are mightier than swords – but don't take his word to the bank.")
