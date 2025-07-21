@@ -21,7 +21,6 @@ def calculate_intrinsic_value(ticker, cagr):
         if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty:
             return None, None, None, None, "Could not fetch required financial data."
 
-        # Extract the relevant fields
         ocf = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = None
 
         for row in cashflow.index:
@@ -50,19 +49,24 @@ def calculate_intrinsic_value(ticker, cagr):
             elif 'minority interest' in row_str and minority_interest is None:
                 minority_interest = float(balance_sheet.loc[row].dropna().values[0])
 
-        if ocf is None or capex is None or ddna is None or equity is None:
-            missing = []
-            if ocf is None: missing.append("Operating Cash Flow")
-            if capex is None: missing.append("Capital Expenditures")
-            if ddna is None: missing.append("Depreciation & Amortization")
-            if equity is None: missing.append("Shareholder Equity")
+        # Check for missing
+        required = {
+            'Operating Cash Flow': ocf,
+            'Capital Expenditures': capex,
+            'Depreciation & Amortization': ddna,
+            'Shareholder Equity': equity
+        }
+        missing = [k for k, v in required.items() if v is None]
+        if missing:
             return None, None, None, None, f"Missing required financial components: {', '.join(missing)}"
 
+        # FCF logic
         capex = -abs(capex)
         ddna = -abs(ddna)
         adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
         fcf = ocf - adjusted_cost  # Owner earnings
 
+        # DCF logic
         discount_rate = 0.06
         cagr_rate = cagr / 100
         projected_fcfs = []
@@ -77,7 +81,7 @@ def calculate_intrinsic_value(ticker, cagr):
         terminal_value = 9 * fcf
         discounted_terminal = terminal_value / ((1 + discount_rate) ** 10)
 
-        # Debt sign correction
+        # Debt correction
         total_debt = 0
         if st_debt is not None:
             total_debt -= st_debt if st_debt > 0 else -st_debt
@@ -89,7 +93,7 @@ def calculate_intrinsic_value(ticker, cagr):
 
         per_share = intrinsic_value_total_mos / shares_outstanding if shares_outstanding else None
 
-        # ROE = Owner Earnings / Equity
+        # ROE = FCF / Equity
         roe = fcf / equity if equity else None
 
         # ROIC
