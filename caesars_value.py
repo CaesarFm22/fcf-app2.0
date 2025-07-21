@@ -12,7 +12,7 @@ stock = yf.Ticker(ticker)
 price = stock.info.get("currentPrice", None)
 cagr = st.slider("Expected CAGR (%):", min_value=0.0, max_value=50.0, value=10.0, step=0.5)
 
-def colorize(val, metric, thresholds):
+def colorize(val, metric, thresholds, caesar_value):
     if val is None:
         return ""
     green, red = "background-color: #d4edda", "background-color: #f8d7da"
@@ -132,6 +132,8 @@ else:
     df.columns = ["Value"]
     df.index.name = "Metric"
 
+    caesar_value = results[0]
+
     def highlight(val, metric):
         thresholds = {
             "ROE": 0.18,
@@ -141,12 +143,12 @@ else:
             "Debt to Equity": 0.8,
             "Cash to Debt": 0.9,
         }
-        return colorize(val, metric, thresholds.get(metric, 0))
+        return colorize(val, metric, thresholds.get(metric, 0), caesar_value)
 
     styled = df.style.set_table_styles([
         {"selector": "th", "props": [("background-color", "#dbefff"), ("font-weight", "bold")]},
-        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}]) \
-        .apply(lambda col: [highlight(val, idx) for idx, val in zip(df.index, col)], axis=0)
+        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}
+    ]).apply(lambda col: [highlight(val, idx) for idx, val in zip(df.index, col)], axis=0)
 
     st.table(styled)
 
