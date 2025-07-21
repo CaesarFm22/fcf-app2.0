@@ -7,7 +7,8 @@ st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 st.title("📊 Caesar's Intrinsic Valuation")
 
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, MSFT):", value="AAPL")
-price = st.number_input("Current Stock Price ($):", min_value=0.0, value=100.0)
+stock = yf.Ticker(ticker)
+price = stock.info.get("currentPrice", None)
 cagr = st.slider("Expected CAGR (%):", min_value=0.0, max_value=50.0, value=10.0, step=0.5)
 
 def calculate_intrinsic_value(ticker, cagr):
@@ -20,7 +21,7 @@ def calculate_intrinsic_value(ticker, cagr):
         shares_outstanding = info.get("sharesOutstanding", None)
 
         if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty or financials is None or financials.empty:
-            return None, None, None, None, None, None, None, None, None, "Could not fetch required financial data."
+            return None, None, None, None, None, None, None, "Could not fetch required financial data."
 
         net_income = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = None
 
@@ -62,7 +63,7 @@ def calculate_intrinsic_value(ticker, cagr):
         }
         missing = [k for k, v in required.items() if v is None]
         if missing:
-            return None, None, None, None, None, None, None, None, None, f"Missing required financial components: {', '.join(missing)}"
+            return None, None, None, None, None, None, None, f"Missing required financial components: {', '.join(missing)}"
 
         capex = -abs(capex)
         ddna = -abs(ddna)
@@ -105,10 +106,10 @@ def calculate_intrinsic_value(ticker, cagr):
 
         retained_rate = (fcf + (dividends if dividends else 0)) / (fcf - (dividends if dividends and dividends < 0 else 0))
 
-        return per_share, intrinsic_value_total_mos, roe, roic, sgr, retained_rate
+        return per_share, intrinsic_value_total_mos, roe, roic, sgr, retained_rate, price, None
 
     except Exception as e:
-        return None, None, None, None, None, None, f"Exception occurred: {e}"
+        return None, None, None, None, None, None, None, f"Exception occurred: {e}"
 
 if st.button("Calculate Caesar's Value"):
     result = calculate_intrinsic_value(ticker, cagr)
@@ -116,7 +117,7 @@ if st.button("Calculate Caesar's Value"):
     if isinstance(result[-1], str):
         st.error(f"❌ {result[-1]}")
     else:
-        per_share_value, total_value, roe, roic, sgr, retained_rate = result
+        per_share_value, total_value, roe, roic, sgr, retained_rate, price, _ = result
 
         st.subheader("📊 Valuation Summary")
         st.table({
