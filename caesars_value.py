@@ -22,9 +22,9 @@ def calculate_intrinsic_value(ticker, cagr):
         shares_outstanding = info.get("sharesOutstanding", None)
 
         if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty or financials is None or financials.empty:
-            return None, None, None, None, None, None, None, "Could not fetch required financial data."
+            return [None]*13 + ["Could not fetch required financial data."]
 
-        net_income = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = None
+        net_income = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = preferred_stock = treasury_stock = None
 
         for row in financials.index:
             row_str = str(row).lower()
@@ -55,6 +55,10 @@ def calculate_intrinsic_value(ticker, cagr):
                 leases = float(balance_sheet.loc[row].dropna().values[0])
             elif 'minority interest' in row_str and minority_interest is None:
                 minority_interest = float(balance_sheet.loc[row].dropna().values[0])
+            elif 'preferred stock' in row_str and preferred_stock is None:
+                preferred_stock = float(balance_sheet.loc[row].dropna().values[0])
+            elif 'treasury stock' in row_str and treasury_stock is None:
+                treasury_stock = float(balance_sheet.loc[row].dropna().values[0])
 
         required = {
             'Net Income': net_income,
@@ -64,7 +68,7 @@ def calculate_intrinsic_value(ticker, cagr):
         }
         missing = [k for k, v in required.items() if v is None]
         if missing:
-            return None, None, None, None, None, None, None, f"Missing required financial components: {', '.join(missing)}"
+            return [None]*13 + [f"Missing required financial components: {', '.join(missing)}"]
 
         capex = -abs(capex)
         ddna = -abs(ddna)
@@ -85,15 +89,9 @@ def calculate_intrinsic_value(ticker, cagr):
         terminal_value = 9 * fcf
         discounted_terminal = terminal_value / ((1 + discount_rate) ** 10)
 
-        total_debt = 0
-        if st_debt is not None:
-            total_debt -= st_debt if st_debt > 0 else -st_debt
-        if lt_debt is not None:
-            total_debt -= lt_debt if lt_debt > 0 else -lt_debt
-
-        intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal + (cash or 0) + total_debt
-        intrinsic_value_total_mos = intrinsic_value_total * (1 - 0.30)
-
+        total_debt = (lt_debt or 0) + (st_debt or 0)
+        intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal + (cash or 0) - total_debt
+        intrinsic_value_total_mos = intrinsic_value_total * 0.70
         per_share = intrinsic_value_total_mos / shares_outstanding if shares_outstanding else None
 
         roe = fcf / equity if equity else None
@@ -107,10 +105,13 @@ def calculate_intrinsic_value(ticker, cagr):
 
         retained_rate = (fcf + (dividends if dividends else 0)) / (fcf - (dividends if dividends and dividends < 0 else 0))
 
-        return per_share, intrinsic_value_total_mos, roe, roic, sgr, retained_rate, price, None
+        debt_to_equity = total_debt / equity if equity else None
+        cash_to_debt = cash / total_debt if total_debt else None
+
+        return per_share, intrinsic_value_total_mos, roe, roic, sgr, retained_rate, price, preferred_stock, treasury_stock, debt_to_equity, cash_to_debt, None
 
     except Exception as e:
-        return None, None, None, None, None, None, None, f"Exception occurred: {e}"
+        return [None]*13 + [f"Exception occurred: {e}"]
 
 if st.button("Calculate Caesar's Value"):
     result = calculate_intrinsic_value(ticker, cagr)
@@ -118,9 +119,10 @@ if st.button("Calculate Caesar's Value"):
     if isinstance(result[-1], str):
         st.error(f"❌ {result[-1]}")
     else:
-        per_share_value, total_value, roe, roic, sgr, retained_rate, price, _ = result
+        per_share_value, total_value, roe, roic, sgr, retained_rate, price, preferred, treasury, dte, ctd, _ = result
 
         st.subheader("📊 Valuation Summary")
+
         def highlight(val, metric):
             if metric in ["Caesar's Value (per share)", "Total Caesar's Value", "Stock Price"]:
                 return 'background-color: lightgreen' if per_share_value > price else 'background-color: lightcoral'
@@ -132,6 +134,14 @@ if st.button("Calculate Caesar's Value"):
                 return 'background-color: lightgreen' if sgr and sgr > 0.18 else 'background-color: lightcoral'
             elif metric == "Retained Earnings Rate":
                 return 'background-color: lightgreen' if retained_rate and retained_rate > 0.70 else 'background-color: lightcoral'
+            elif metric == "Preferred Stock":
+                return 'background-color: lightcoral' if preferred and preferred > 0 else 'background-color: lightgreen'
+            elif metric == "Treasury Stock":
+                return 'background-color: lightgreen' if treasury and treasury > 0 else 'background-color: lightcoral'
+            elif metric == "Debt to Equity":
+                return 'background-color: lightgreen' if dte and dte < 0.8 else 'background-color: lightcoral'
+            elif metric == "Cash to Debt":
+                return 'background-color: lightgreen' if ctd and ctd > 0.9 else 'background-color: lightcoral'
             return ''
 
         df = pd.DataFrame({
@@ -142,7 +152,11 @@ if st.button("Calculate Caesar's Value"):
                 "Return on Equity (ROE)",
                 "Return on Invested Capital (ROIC)",
                 "Sustainable Growth Rate (SGR)",
-                "Retained Earnings Rate"
+                "Retained Earnings Rate",
+                "Preferred Stock",
+                "Treasury Stock",
+                "Debt to Equity",
+                "Cash to Debt"
             ],
             "Value": [
                 f"${per_share_value:,.2f}",
@@ -151,12 +165,16 @@ if st.button("Calculate Caesar's Value"):
                 f"{roe:.2%}" if roe is not None else "N/A",
                 f"{roic:.2%}" if roic is not None else "N/A",
                 f"{sgr:.2%}" if sgr is not None else "N/A",
-                f"{retained_rate:.2%}" if retained_rate is not None else "N/A"
+                f"{retained_rate:.2%}" if retained_rate is not None else "N/A",
+                f"${preferred:,.2f}" if preferred else "$0.00",
+                f"${treasury:,.2f}" if treasury else "$0.00",
+                f"{dte:.2f}" if dte is not None else "N/A",
+                f"{ctd:.2f}" if ctd is not None else "N/A"
             ]
         })
 
         st.dataframe(
-            df.style.apply(lambda row: ["background-color: #EAF2F8"] + [highlight(row['Value'], row['Metric'])], axis=1)
+            df.style.apply(lambda row: ["background-color: #D6EAF8"] + [highlight(row['Value'], row['Metric'])], axis=1)
                      .set_table_styles([
                          {'selector': 'th', 'props': [('background-color', '#AED6F1'), ('color', 'black'), ('font-size', '14px')]},
                          {'selector': 'td', 'props': [('font-size', '13px')]}
