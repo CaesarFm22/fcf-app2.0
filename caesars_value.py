@@ -6,7 +6,7 @@ import pandas as pd
 st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 
 st.title("📊 Caesar's Intrinsic Valuation")
-st.image("ChatGPT Image Jul 10, 2025, 06_34_37 PM.png", width=80)
+st.image("https://github.com/CaesarFm22/fcf-app2.0/blob/main/ChatGPT%20Image%20Jul%2010,%202025,%2006_34_37%20PM.png?raw=true", width=80)
 
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, MSFT):", value="AAPL")
 stock = yf.Ticker(ticker)
@@ -170,7 +170,7 @@ else:
     valuation_status = "undervalued" if current_price < caesar_value_per_share * 0.9 else "overvalued" if current_price > caesar_value_per_share * 1.1 else "fairly valued"
     color = "#d4edda" if valuation_status == "undervalued" else "#f8d7da" if valuation_status == "overvalued" else "#fff3cd"
 
-    st.markdown(f"### <span style='background-color:{color}; padding:0.2em 0.4em;'>According to Caesar, this stock is **{valuation_status}**.</span>", unsafe_allow_html=True)
+    st.markdown(f"### <span style='background-color:{color}; padding:0.2em 0.4em;'>According to Caesar, this stock is <strong style='color:{'green' if valuation_status == 'undervalued' else 'red' if valuation_status == 'overvalued' else '#a87b00'}'>{valuation_status}</strong>.</span>", unsafe_allow_html=True)
 
     st.markdown("""
     ---
