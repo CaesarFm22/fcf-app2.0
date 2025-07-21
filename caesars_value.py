@@ -5,6 +5,34 @@ import pandas as pd
 
 st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 
+# Apply soft dark background theme
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #2d2d2d;
+        color: #ffffff;
+    }
+
+    .css-1d391kg, .css-1v0mbdj, .css-1r6slb0 {
+        color: #ffffff;
+    }
+
+    .stTextInput>div>div>input,
+    .stSlider>div>div>div>input {
+        background-color: #444;
+        color: #fff;
+    }
+
+    .stDataFrame td {
+        color: #ffffff !important;
+    }
+
+    .css-10trblm, .css-hxt7ib {
+        color: #ffffff;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.markdown("""
     <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
         <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
