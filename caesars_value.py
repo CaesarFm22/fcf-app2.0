@@ -31,10 +31,8 @@ st.markdown("""
 
 st.markdown("""
     <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
-        <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
+        <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank" style="display: flex; align-items: center; gap: 10px;">
             <img src="https://raw.githubusercontent.com/CaesarFm22/logo/main/ChatGPT%20Image%20Jul%2010%2C%202025%2C%2006_34_37%20PM.png" width="100">
-        </a>
-        <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
             <img src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" width="60">
         </a>
     </div>
