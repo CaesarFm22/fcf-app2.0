@@ -5,7 +5,20 @@ import pandas as pd
 
 st.set_page_config(page_title="Caesar's Valuation", page_icon="💰")
 
-st.image("https://github.com/CaesarFm22/fcf-app2.0/blob/main/ChatGPT%20Image%20Jul%2010,%202025,%2006_34_37%20PM.png?raw=true", width=80)
+col1, col2 = st.columns([1, 1])
+with col1:
+    st.markdown("""
+        <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
+            <img src="https://github.com/CaesarFm22/fcf-app2.0/blob/main/ChatGPT%20Image%20Jul%2010,%202025,%2006_34_37%20PM.png?raw=true" width="80">
+        </a>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown("""
+        <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" width="100">
+        </a>
+    """, unsafe_allow_html=True)
+
 st.title("Caesar's Intrinsic Valuation")
 
 ticker = st.text_input("Enter Stock Ticker (e.g. AAPL, MSFT):", value="AAPL")
