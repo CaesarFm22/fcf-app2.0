@@ -23,8 +23,8 @@ st.markdown("""
 # Display logo and YouTube icon with link
 st.markdown("""
 <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
-    <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank" style="display: flex; align-items: center; gap: 8px;">
-        <img src="https://i.postimg.cc/JzBzfxws/Chat-GPT-Image-Jul-10-2025-06-34-37-PM.png" width="90" alt="Logo">
+    <a href="https://www.youtube.com/@CaesarFM-h9z" target="_blank" style="display: flex; align-items: center; gap: 12px;">
+        <img src="https://i.postimg.cc/JzBzfxws/Chat-GPT-Image-Jul-10-2025-06-34-37-PM.png" width="100" alt="Logo">
         <img src="https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png" width="60" alt="YouTube">
     </a>
 </div>
