@@ -12,6 +12,36 @@ stock = yf.Ticker(ticker)
 price = stock.info.get("currentPrice", None)
 cagr = st.slider("Expected CAGR (%):", min_value=0.0, max_value=50.0, value=10.0, step=0.5)
 
+def colorize(val, metric, thresholds):
+    if val is None:
+        return ""
+    green, red = "background-color: #d4edda", "background-color: #f8d7da"
+    if metric == "Caesar Value":
+        return green if val > price else red
+    elif metric == "Price":
+        return green if val < caesar_value else red
+    elif metric == "ROE":
+        return green if val > thresholds else red
+    elif metric == "ROIC":
+        return green if val > thresholds else red
+    elif metric == "SGR":
+        return green if val > thresholds else red
+    elif metric == "Retained Earnings %":
+        return green if val > thresholds else red
+    elif metric == "Preferred Stock":
+        return red if val and val > 0 else green
+    elif metric == "Treasury Stock":
+        return green if val and val > 0 or dividends_per_share and dividends_per_share > 0 else red
+    elif metric == "Debt to Equity":
+        return green if val < thresholds else red
+    elif metric == "Cash to Debt":
+        return green if val > thresholds else red
+    elif metric == "Market Cap":
+        return green if val < caesar_value * 0.9 else red if val > caesar_value * 1.1 else "background-color: #fff3cd"
+    elif metric == "Dividends per Share":
+        return green if val > 0 or (treasury and treasury > 0) else red
+    return ""
+
 def calculate_intrinsic_value(ticker, cagr):
     try:
         stock = yf.Ticker(ticker)
@@ -20,9 +50,11 @@ def calculate_intrinsic_value(ticker, cagr):
         financials = stock.financials
         info = stock.info
         shares_outstanding = info.get("sharesOutstanding", None)
+        market_cap = info.get("marketCap", None)
+        dividends_per_share = info.get("dividendRate", 0.0)
 
-        if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty or financials is None or financials.empty:
-            return [None]*13 + ["Could not fetch required financial data."]
+        if cashflow.empty or balance_sheet.empty or financials.empty:
+            return [None]*15 + ["Could not fetch required financial data."]
 
         net_income = capex = ddna = dividends = equity = lt_debt = st_debt = cash = leases = minority_interest = preferred_stock = treasury_stock = None
 
@@ -36,8 +68,7 @@ def calculate_intrinsic_value(ticker, cagr):
             if 'capital expend' in row_str and capex is None:
                 capex = float(cashflow.loc[row].dropna().values[0])
             elif any(term in row_str for term in ['depreciation', 'amortization', 'depletion']):
-                value = float(cashflow.loc[row].dropna().values[0])
-                ddna = (ddna or 0) + value
+                ddna = (ddna or 0) + float(cashflow.loc[row].dropna().values[0])
             elif 'dividends paid' in row_str and dividends is None:
                 dividends = float(cashflow.loc[row].dropna().values[0])
 
@@ -60,16 +91,6 @@ def calculate_intrinsic_value(ticker, cagr):
             elif 'treasury stock' in row_str and treasury_stock is None:
                 treasury_stock = float(balance_sheet.loc[row].dropna().values[0])
 
-        required = {
-            'Net Income': net_income,
-            'Capital Expenditures': capex,
-            'Depreciation & Amortization': ddna,
-            'Shareholder Equity': equity
-        }
-        missing = [k for k, v in required.items() if v is None]
-        if missing:
-            return [None]*13 + [f"Missing required financial components: {', '.join(missing)}"]
-
         capex = -abs(capex)
         ddna = -abs(ddna)
         adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
@@ -77,119 +98,64 @@ def calculate_intrinsic_value(ticker, cagr):
 
         discount_rate = 0.06
         cagr_rate = cagr / 100
-        projected_fcfs = []
-        discounted_fcfs = []
-
-        for year in range(1, 11):
-            future_fcf = fcf * ((1 + cagr_rate) ** year)
-            discounted_fcf = future_fcf / ((1 + discount_rate) ** year)
-            projected_fcfs.append(future_fcf)
-            discounted_fcfs.append(discounted_fcf)
+        discounted_fcfs = [fcf * ((1 + cagr_rate) ** i) / ((1 + discount_rate) ** i) for i in range(1, 11)]
 
         terminal_value = 9 * fcf
         discounted_terminal = terminal_value / ((1 + discount_rate) ** 10)
 
         total_debt = (lt_debt or 0) + (st_debt or 0)
-        intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal + (cash or 0) - total_debt
-        intrinsic_value_total_mos = intrinsic_value_total * 0.70
-        per_share = intrinsic_value_total_mos / shares_outstanding if shares_outstanding else None
+        caesar_value = sum(discounted_fcfs) + discounted_terminal + (cash or 0) - total_debt
+        caesar_value *= 0.70
 
+        caesar_value_per_share = caesar_value / shares_outstanding if shares_outstanding else None
         roe = fcf / equity if equity else None
         invested_capital = (equity or 0) + (lt_debt or 0) + (st_debt or 0) + (leases or 0) + (minority_interest or 0) - (cash or 0)
         retained_earnings = fcf - (dividends if dividends and dividends < 0 else 0)
         roic = retained_earnings / invested_capital if invested_capital else None
-
-        sgr = None
-        if roic and roic > 0:
-            sgr = roic * ((fcf + (dividends if dividends else 0)) / fcf)
-
-        retained_rate = (fcf + (dividends if dividends else 0)) / (fcf - (dividends if dividends and dividends < 0 else 0))
-
+        sgr = roic * ((fcf + (dividends or 0)) / fcf) if roic and roic > 0 else None
+        retained_rate = (fcf + (dividends or 0)) / (fcf - (dividends if dividends and dividends < 0 else 0))
         debt_to_equity = total_debt / equity if equity else None
         cash_to_debt = cash / total_debt if total_debt else None
 
-        return per_share, intrinsic_value_total_mos, roe, roic, sgr, retained_rate, price, preferred_stock, treasury_stock, debt_to_equity, cash_to_debt, None
+        return caesar_value, caesar_value_per_share, roe, roic, sgr, retained_rate, price, preferred_stock, treasury_stock, debt_to_equity, cash_to_debt, market_cap, dividends_per_share, None
 
     except Exception as e:
-        return [None]*13 + [f"Exception occurred: {e}"]
+        return [None]*15 + [str(e)]
 
-if st.button("Calculate Caesar's Value"):
-    result = calculate_intrinsic_value(ticker, cagr)
+results = calculate_intrinsic_value(ticker, cagr)
 
-    if isinstance(result[-1], str):
-        st.error(f"❌ {result[-1]}")
-    else:
-        per_share_value, total_value, roe, roic, sgr, retained_rate, price, preferred, treasury, dte, ctd, _ = result
+if results[-1]:
+    st.error(results[-1])
+else:
+    labels = ["Caesar Value", "Caesar Value per Share", "ROE", "ROIC", "SGR", "Retained Earnings %", "Price", "Preferred Stock", "Treasury Stock", "Debt to Equity", "Cash to Debt", "Market Cap", "Dividends per Share"]
+    df = pd.DataFrame([[results[i] for i in range(len(labels))]], columns=labels).T
+    df.columns = ["Value"]
+    df.index.name = "Metric"
 
-        st.subheader("📊 Valuation Summary")
+    def highlight(val, metric):
+        thresholds = {
+            "ROE": 0.18,
+            "ROIC": 0.18,
+            "SGR": 0.18,
+            "Retained Earnings %": 0.7,
+            "Debt to Equity": 0.8,
+            "Cash to Debt": 0.9,
+        }
+        return colorize(val, metric, thresholds.get(metric, 0))
 
-        def highlight(val, metric):
-            if metric in ["Caesar's Value (per share)", "Total Caesar's Value", "Stock Price"]:
-                return 'background-color: lightgreen' if per_share_value > price else 'background-color: lightcoral'
-            elif metric == "Return on Equity (ROE)":
-                return 'background-color: lightgreen' if roe and roe > 0.18 else 'background-color: lightcoral'
-            elif metric == "Return on Invested Capital (ROIC)":
-                return 'background-color: lightgreen' if roic and roic > 0.18 else 'background-color: lightcoral'
-            elif metric == "Sustainable Growth Rate (SGR)":
-                return 'background-color: lightgreen' if sgr and sgr > 0.18 else 'background-color: lightcoral'
-            elif metric == "Retained Earnings Rate":
-                return 'background-color: lightgreen' if retained_rate and retained_rate > 0.70 else 'background-color: lightcoral'
-            elif metric == "Preferred Stock":
-                return 'background-color: lightcoral' if preferred and preferred > 0 else 'background-color: lightgreen'
-            elif metric == "Treasury Stock":
-                return 'background-color: lightgreen' if treasury and treasury > 0 else 'background-color: lightcoral'
-            elif metric == "Debt to Equity":
-                return 'background-color: lightgreen' if dte and dte < 0.8 else 'background-color: lightcoral'
-            elif metric == "Cash to Debt":
-                return 'background-color: lightgreen' if ctd and ctd > 0.9 else 'background-color: lightcoral'
-            return ''
+    styled = df.style.set_table_styles([
+        {"selector": "th", "props": [("background-color", "#dbefff"), ("font-weight", "bold")]},
+        {"selector": "thead th", "props": [("background-color", "#a8d0ff")]}]) \
+        .apply(lambda col: [highlight(val, idx) for idx, val in zip(df.index, col)], axis=0)
 
-        df = pd.DataFrame({
-            "Metric": [
-                "Caesar's Value (per share)",
-                "Stock Price",
-                "Total Caesar's Value",
-                "Return on Equity (ROE)",
-                "Return on Invested Capital (ROIC)",
-                "Sustainable Growth Rate (SGR)",
-                "Retained Earnings Rate",
-                "Preferred Stock",
-                "Treasury Stock",
-                "Debt to Equity",
-                "Cash to Debt"
-            ],
-            "Value": [
-                f"${per_share_value:,.2f}",
-                f"${price:,.2f}" if price else "N/A",
-                f"${total_value:,.2f}",
-                f"{roe:.2%}" if roe is not None else "N/A",
-                f"{roic:.2%}" if roic is not None else "N/A",
-                f"{sgr:.2%}" if sgr is not None else "N/A",
-                f"{retained_rate:.2%}" if retained_rate is not None else "N/A",
-                f"${preferred:,.2f}" if preferred else "$0.00",
-                f"${treasury:,.2f}" if treasury else "$0.00",
-                f"{dte:.2f}" if dte is not None else "N/A",
-                f"{ctd:.2f}" if ctd is not None else "N/A"
-            ]
-        })
+    st.table(styled)
 
-        st.dataframe(
-            df.style.apply(lambda row: ["background-color: #D6EAF8"] + [highlight(row['Value'], row['Metric'])], axis=1)
-                     .set_table_styles([
-                         {'selector': 'th', 'props': [('background-color', '#AED6F1'), ('color', 'black'), ('font-size', '14px')]},
-                         {'selector': 'td', 'props': [('font-size', '13px')]}
-                     ])
-        )
+    current_price = results[6]
+    caesar_value_per_share = results[1]
+    valuation_status = "undervalued" if current_price < caesar_value_per_share * 0.9 else "overvalued" if current_price > caesar_value_per_share * 1.1 else "fairly valued"
+    st.markdown(f"### 🏷️ According to Caesar, this stock is **{valuation_status}**.")
 
-        if per_share_value and price:
-            if price > per_share_value * 1.1:
-                verdict = "🚨 Overvalued"
-            elif per_share_value * 0.9 <= price <= per_share_value * 1.1:
-                verdict = "✅ Fairly Valued"
-            else:
-                verdict = "💎 Undervalued"
-            st.subheader(f"Market Verdict: {verdict}")
-
-        st.markdown("---")
-        st.markdown("### 🧠 Disclaimer")
-        st.markdown("This tool represents **Caesar's personal valuation opinion** based on publicly available data and does **not constitute financial advice**. Caesar believes spreadsheets are mightier than swords – but don't take his word to the bank.")
+    st.markdown("""
+    ---
+    ⚠️ **This is just Caesar's opinion, not financial advice. Always do your own research before investing.**
+    """)
