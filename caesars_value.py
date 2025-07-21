@@ -13,10 +13,11 @@ def calculate_intrinsic_value(ticker, cagr):
     try:
         stock = yf.Ticker(ticker)
         cashflow = stock.cashflow
+        balance_sheet = stock.balance_sheet
         shares_outstanding = stock.info.get("sharesOutstanding", None)
 
-        if cashflow is None or cashflow.empty:
-            return None, "Could not fetch cashflow data."
+        if cashflow is None or cashflow.empty or balance_sheet is None or balance_sheet.empty:
+            return None, "Could not fetch required financial data."
 
         # Extract the relevant fields
         ocf = None
@@ -35,27 +36,53 @@ def calculate_intrinsic_value(ticker, cagr):
         if ocf is None or capex is None or ddna is None:
             return None, "Missing required cashflow components."
 
-        # Ensure CapEx and DD&A are treated as negative outflows
         capex = -abs(capex)
         ddna = -abs(ddna)
-
-        # Use the higher absolute value between CapEx and DD&A
         adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
-        fcf = ocf - adjusted_cost
+        fcf = ocf - adjusted_cost  # Owner earnings
 
-        # DCF valuation with 5-year projection and terminal value (as 9 * final FCF)
-        years = 5
+        # Forecast and discount each year individually for 10 years
+        discount_rate = 0.06
         cagr_rate = cagr / 100
-        discount = 0.06  # constant 6% discount rate
+        projected_fcfs = []
+        discounted_fcfs = []
 
-        projected_fcfs = [fcf * ((1 + cagr_rate) ** year) for year in range(1, years + 1)]
-        discounted_fcfs = [fcf_ / ((1 + discount) ** year) for year, fcf_ in enumerate(projected_fcfs, start=1)]
+        for year in range(1, 11):
+            future_fcf = fcf * ((1 + cagr_rate) ** year)
+            discounted_fcf = future_fcf / ((1 + discount_rate) ** year)
+            projected_fcfs.append(future_fcf)
+            discounted_fcfs.append(discounted_fcf)
 
-        # Terminal value as 9x the final projected FCF
-        terminal_value = projected_fcfs[-1] * 9
-        discounted_terminal = terminal_value / ((1 + discount) ** years)
+        # Terminal value = 9 * current FCF
+        terminal_value = 9 * fcf
+        discounted_terminal = terminal_value / ((1 + discount_rate) ** 10)
 
-        intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal
+        # Add cash and subtract debt
+        cash = 0
+        short_term_debt = 0
+        long_term_debt = 0
+
+        for row in balance_sheet.index:
+            row_str = str(row).lower()
+            if 'cash and cash equivalents' in row_str and cash == 0:
+                cash = float(balance_sheet.loc[row].dropna().values[0])
+            elif 'short long term debt' in row_str and short_term_debt == 0:
+                short_term_debt = float(balance_sheet.loc[row].dropna().values[0])
+            elif 'long term debt' in row_str and long_term_debt == 0:
+                long_term_debt = float(balance_sheet.loc[row].dropna().values[0])
+
+        # Adjust for sign
+        if short_term_debt > 0:
+            debt_adjustment = -short_term_debt
+        else:
+            debt_adjustment = abs(short_term_debt)
+
+        if long_term_debt > 0:
+            debt_adjustment -= long_term_debt
+        else:
+            debt_adjustment += abs(long_term_debt)
+
+        intrinsic_value_total = sum(discounted_fcfs) + discounted_terminal + cash + debt_adjustment
 
         if shares_outstanding and shares_outstanding > 0:
             per_share = intrinsic_value_total / shares_outstanding
