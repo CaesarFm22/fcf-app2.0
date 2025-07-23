@@ -37,10 +37,8 @@ if ticker:
         market_cap = price * shares_outstanding
 
         # Corrected FCF / Owner Earnings logic
-        if capex < 0:
-            fcf = operating_cash_flow - capex + ddna
-        else:
-            fcf = operating_cash_flow + ddna
+        adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
+        fcf = operating_cash_flow - adjusted_cost
 
         cagr = cagr_input / 100
         intrinsic_value = fcf * (1 + cagr)**10
