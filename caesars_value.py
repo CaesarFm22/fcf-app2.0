@@ -3,23 +3,6 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 
-# Set default darker theme colors
-st.markdown("""
-    <style>
-        body {
-            background-color: #1e1e1e;
-            color: white;
-        }
-        .stTextInput > div > div > input,
-        .stNumberInput > div > div > input {
-            color: white;
-        }
-        .stSelectbox > div > div > div > div {
-            color: white;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 # Display logo and YouTube icon with link
 st.markdown("""
 <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
