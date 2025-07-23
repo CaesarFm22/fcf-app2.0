@@ -53,11 +53,11 @@ if ticker:
         treasury = balance_sheet.loc["Treasury Stock"].iloc[0] if "Treasury Stock" in balance_sheet.index else 0
         market_cap = price * shares_outstanding
 
-        # Calculate FCF and Caesars Value
-        if abs(ddna) > abs(capex):
-            fcf = operating_cash_flow + ddna  # Ignore capex if DD&A is larger
-        else:
+        # Corrected FCF / Owner Earnings logic
+        if capex < 0:
             fcf = operating_cash_flow - capex + ddna
+        else:
+            fcf = operating_cash_flow + ddna
 
         cagr = cagr_input / 100
         intrinsic_value = fcf * (1 + cagr)**10
