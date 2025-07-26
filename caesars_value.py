@@ -77,12 +77,15 @@ def calculate_intrinsic_value(ticker, cagr):
             if 'net income' in row_str and net_income is None:
                 net_income = float(financials.loc[row].dropna().values[0])
 
+        capex_rows = []
         for row in cashflow.index:
             row_str = str(row).lower()
-            if 'capital expend' in row_str and capex is None:
-                capex = float(cashflow.loc[row].dropna().values[0])
-            elif any(term in row_str for term in ['depreciation', 'amortization', 'depletion']):
-                ddna = (ddna or 0) + float(cashflow.loc[row].dropna().values[0])
+            if row_str == 'capital expenditure':
+                val = float(cashflow.loc[row].dropna().values[0])
+                capex_rows.append((row, val))
+                capex = val
+            elif any(term in row_str for term in ['depreciation', 'amortization', 'depletion']) and ddna is None:
+                ddna = float(cashflow.loc[row].iloc[0])
             elif 'dividends paid' in row_str and dividends is None:
                 dividends = float(cashflow.loc[row].dropna().values[0])
 
@@ -90,9 +93,9 @@ def calculate_intrinsic_value(ticker, cagr):
             row_str = str(row).lower()
             if 'stockholder' in row_str and 'equity' in row_str and equity is None:
                 equity = float(balance_sheet.loc[row].dropna().values[0])
-            elif 'long term debt' in row_str and lt_debt is None:
+            elif row_str == 'long term debt' and lt_debt is None:
                 lt_debt = float(balance_sheet.loc[row].dropna().values[0])
-            elif 'short long term debt' in row_str and st_debt is None:
+            elif row_str == 'short long term debt' and st_debt is None:
                 st_debt = float(balance_sheet.loc[row].dropna().values[0])
             elif 'cash and cash' in row_str and cash is None:
                 cash = float(balance_sheet.loc[row].dropna().values[0])
@@ -105,10 +108,11 @@ def calculate_intrinsic_value(ticker, cagr):
             elif 'treasury stock' in row_str and treasury_stock is None:
                 treasury_stock = float(balance_sheet.loc[row].dropna().values[0])
 
-        capex = -abs(capex)
-        ddna = -abs(ddna)
-        adjusted_cost = capex if abs(capex) > abs(ddna) else ddna
-        fcf = net_income - adjusted_cost
+        capex = -abs(capex or 0)
+        ddna = abs(ddna or 0)
+
+        maintenance_capex = capex if abs(capex) > abs(ddna) else -ddna
+        fcf = net_income + ddna - abs(maintenance_capex)
 
         discount_rate = 0.06
         cagr_rate = cagr / 100
@@ -122,6 +126,8 @@ def calculate_intrinsic_value(ticker, cagr):
         caesar_value *= 0.70
 
         caesar_value_per_share = caesar_value / shares_outstanding if shares_outstanding else None
+
+
         roe = fcf / equity if equity else None
         invested_capital = (equity or 0) + (lt_debt or 0) + (st_debt or 0) + (leases or 0) + (minority_interest or 0) - (cash or 0)
         retained_earnings = fcf - (dividends if dividends and dividends < 0 else 0)
